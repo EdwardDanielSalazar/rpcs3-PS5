@@ -1,5 +1,11 @@
 name: PS5 build preflight
 on:
+  push:
+    branches:
+      - feature/ps5-13.42-rpcs3
+    paths:
+      - '.github/workflows/ps5-build-preflight.yml'
+      - 'tools/**'
   workflow_dispatch:
     inputs:
       run_bootstrap:
