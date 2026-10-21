@@ -1,0 +1,57 @@
+name: RPCS3 PS5 media dependencies
+on:
+  push:
+    branches: [feature/ps5-13.42-rpcs3]
+    paths: ['.github/workflows/rpcs3-media-ps5.yml']
+  workflow_dispatch:
+jobs:
+  media:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    container: archlinux:latest
+    steps:
+      - name: Install host packages
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git clang llvm lld cmake ninja python wget unzip curl tar nasm
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Install pinned PS5 SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          mkdir -p deps/PS5_PayloadSDK
+          git init -q deps/PS5_PayloadSDK
+          git -C deps/PS5_PayloadSDK fetch --depth 1 https://github.com/lavavex/PS5_PayloadSDK.git b5efad528e0ac1b8289f39d72a0e890ff68ff0a6
+          git -C deps/PS5_PayloadSDK checkout --detach FETCH_HEAD
+          bash tools/install-sdk.sh
+      - name: Cross-compile libiconv
+        shell: bash
+        run: |
+          set -euo pipefail
+          export JOBS=2
+          bash tools/build-libiconv.sh 2>&1 | tee "$GITHUB_WORKSPACE/libiconv-ps5.log"
+          test -s deps/libiconv-ps5/lib/libiconv.a
+      - name: Cross-compile FFmpeg
+        shell: bash
+        run: |
+          set -euo pipefail
+          export JOBS=2
+          bash tools/build-ffmpeg.sh 2>&1 | tee "$GITHUB_WORKSPACE/ffmpeg-ps5.log"
+          test -s deps/ffmpeg-ps5/lib/libavcodec.a
+          test -s deps/ffmpeg-ps5/lib/libavformat.a
+          echo "Media dependencies ready for RPCS3 PS5"
+      - name: Upload diagnostics only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpcs3-media-ps5-logs
+          path: |
+            libiconv-ps5.log
+            ffmpeg-ps5.log
+            build/ffmpeg-ps5/configure.log
+            build/ffmpeg-ps5/make.log
+            build/libiconv-ps5/configure.log
+            build/libiconv-ps5/make.log
+          if-no-files-found: ignore
