@@ -28,7 +28,7 @@ jobs:
           submodules: false
       - name: Install documented host build tools
         run: |
-          pacman -Syu --noconfirm --needed base-devel clang llvm lld make python python-pip git curl unzip tar pkgconf cmake ninja nasm glslang spirv-llvm-translator libclc spirv-headers python-ply
+          pacman -Syu --noconfirm --needed base-devel clang llvm lld make python python-pip git curl wget unzip tar pkgconf cmake ninja nasm glslang spirv-llvm-translator libclc spirv-headers python-ply
       - name: Verify host and source scripts
         shell: bash
         run: |
@@ -40,7 +40,7 @@ jobs:
           df -h .
       - name: Attempt original bootstrap (opt-in)
         if: >-
-          ${{ inputs.run_bootstrap == true || github.event.head_commit.message == 'ci: launch PS5 bootstrap fixed' }}
+          ${{ inputs.run_bootstrap == true || github.event.head_commit.message == 'ci: retry PS5 bootstrap with wget' }}
         shell: bash
         run: |
           set -o pipefail
@@ -48,7 +48,7 @@ jobs:
           bash tools/bootstrap.sh 2>&1 | tee bootstrap.log
       - name: Upload build log (no binaries)
         if: >-
-          ${{ always() && (inputs.run_bootstrap == true || github.event.head_commit.message == 'ci: launch PS5 bootstrap fixed') }}
+          ${{ always() && (inputs.run_bootstrap == true || github.event.head_commit.message == 'ci: retry PS5 bootstrap with wget') }}
         uses: actions/upload-artifact@v4
         with:
           name: ps5-bootstrap-log
