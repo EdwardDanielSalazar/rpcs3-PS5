@@ -13,6 +13,11 @@ on:
         type: boolean
         required: false
         default: false
+      ps5_opengl_sdk_url:
+        description: "Optional verified mirror URL of exact ps5-opengl SDK 0.3.0 archive"
+        required: false
+        type: string
+        default: ""
 jobs:
   ps5-host:
     runs-on: ubuntu-latest
@@ -39,16 +44,16 @@ jobs:
           git -c safe.directory="$PWD" submodule status
           df -h .
       - name: Attempt original bootstrap (opt-in)
-        if: >-
-          ${{ inputs.run_bootstrap == true || github.event.head_commit.message == 'ci: retry PS5 bootstrap with wget' }}
+        env:
+          PS5_OPENGL_SDK_URL: ${{ inputs.ps5_opengl_sdk_url }}
+        if: ${{ inputs.run_bootstrap == true }}
         shell: bash
         run: |
           set -o pipefail
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           bash tools/bootstrap.sh 2>&1 | tee bootstrap.log
       - name: Upload build log (no binaries)
-        if: >-
-          ${{ always() && (inputs.run_bootstrap == true || github.event.head_commit.message == 'ci: retry PS5 bootstrap with wget') }}
+        if: ${{ always() && inputs.run_bootstrap == true }}
         uses: actions/upload-artifact@v4
         with:
           name: ps5-bootstrap-log
