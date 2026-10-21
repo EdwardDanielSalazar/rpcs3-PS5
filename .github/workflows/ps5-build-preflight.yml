@@ -36,7 +36,7 @@ jobs:
           for tool in git cmake ninja clang clang++ python3 curl nasm make llvm-spirv glslangValidator; do command -v "$tool"; done
           for script in tools/*.sh; do bash -n "$script"; done
           python3 tools/test-inspect-ppu-cache.py -v
-          git submodule status
+          git -c safe.directory="$PWD" submodule status
           df -h .
       - name: Attempt original bootstrap (opt-in)
         if: inputs.run_bootstrap == true
