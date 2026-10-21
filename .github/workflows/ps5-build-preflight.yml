@@ -39,7 +39,8 @@ jobs:
           git -c safe.directory="$PWD" submodule status
           df -h .
       - name: Attempt original bootstrap (opt-in)
-        if: ${{ inputs.run_bootstrap == true || github.event.head_commit.message == 'ci: retry full PS5 bootstrap' }}
+        if: >-
+          ${{ inputs.run_bootstrap == true || github.event.head_commit.message == 'ci: run PS5 bootstrap with YAML fix' }}
         shell: bash
         run: |
           set -o pipefail
