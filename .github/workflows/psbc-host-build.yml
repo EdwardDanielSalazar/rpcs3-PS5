@@ -1,0 +1,60 @@
+name: PSBC host compiler build
+on:
+  push:
+    branches: [feature/ps5-13.42-rpcs3]
+    paths: ['.github/workflows/psbc-host-build.yml']
+  workflow_dispatch:
+jobs:
+  compiler:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Install native host prerequisites
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends build-essential python3-mako python3-yaml python3-ply git pkg-config
+      - name: Fetch and verify PSBC source and required headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/darkxex/ps5-opengl.git sdk
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('sdk')
+          d=json.loads((p/'dependencies.json').read_text())
+          actual=hashlib.sha256((p/d['psbc_patch']['path']).read_bytes()).hexdigest()
+          assert actual==d['psbc_patch']['sha256']
+          print('patch digest verified:', actual)
+          PY
+          python3 - <<'PY'
+          import json,subprocess,pathlib
+          root=pathlib.Path('sdk')
+          d=json.loads((root/'dependencies.json').read_text())
+          for name in ('opengnm-psbc','opengnm','SPIRV-Headers','Vulkan-Headers'):
+              pin=d['repositories'][name]
+              dst=root/'third_party'/name
+              dst.mkdir(parents=True,exist_ok=True)
+              subprocess.run(['git','init','-q',str(dst)],check=True)
+              subprocess.run(['git','-C',str(dst),'remote','add','origin',pin['url']],check=True)
+              subprocess.run(['git','-C',str(dst),'fetch','--depth','1','origin',pin['revision']],check=True)
+              subprocess.run(['git','-C',str(dst),'checkout','--detach','FETCH_HEAD'],check=True,stdout=subprocess.DEVNULL)
+              if name=='opengnm-psbc':
+                  subprocess.run(['git','-C',str(dst),'apply','--index',str((root/d['psbc_patch']['path']).resolve())],check=True)
+                  tree=subprocess.check_output(['git','-C',str(dst),'write-tree'],text=True).strip()
+                  assert tree==d['psbc_patch']['patched_tree'],(tree,d['psbc_patch']['patched_tree'])
+                  print('PSBC source tree verified:',tree)
+          PY
+      - name: Build host shader compiler using upstream script
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd sdk
+          export PSBC_JOBS=2
+          bash toolchain/build-opengnm-psbc.sh 2>&1 | tee ../psbc-host-build.log
+      - name: Publish build log (no binaries)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: psbc-host-build-log
+          path: psbc-host-build.log
+          if-no-files-found: ignore
