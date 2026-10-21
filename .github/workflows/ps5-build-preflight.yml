@@ -1,0 +1,47 @@
+name: PS5 build preflight
+on:
+  workflow_dispatch:
+    inputs:
+      run_bootstrap:
+        description: "Attempt full bootstrap (expensive; may exceed runner resources)"
+        type: boolean
+        required: false
+        default: false
+jobs:
+  ps5-host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Install Git and initial CA certificates
+        run: |
+          pacman -Sy --noconfirm --needed git ca-certificates
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Install documented host build tools
+        run: |
+          pacman -Syu --noconfirm --needed base-devel clang llvm lld make python python-pip git curl unzip tar pkgconf cmake ninja nasm glslang spirv-llvm-translator libclc spirv-headers python-ply
+      - name: Verify host and source scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tool in git cmake ninja clang clang++ python3 curl nasm make llvm-spirv glslangValidator; do command -v "$tool"; done
+          for script in tools/*.sh; do bash -n "$script"; done
+          python3 tools/test-inspect-ppu-cache.py -v
+          git submodule status
+          df -h .
+      - name: Attempt original bootstrap (opt-in)
+        if: inputs.run_bootstrap == true
+        shell: bash
+        run: |
+          set -o pipefail
+          bash tools/bootstrap.sh 2>&1 | tee bootstrap.log
+      - name: Upload build log (no binaries)
+        if: always() && inputs.run_bootstrap == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ps5-bootstrap-log
+          path: bootstrap.log
+          if-no-files-found: ignore
