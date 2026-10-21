@@ -58,7 +58,9 @@ jobs:
             PS5_PAYLOAD_SDK="$GITHUB_WORKSPACE/deps/sdk-rpcs3" \
             >> "$GITHUB_WORKSPACE/psbc-cross-build.log" 2>&1
           test -s libpsbc.ps5.a
-          "$GITHUB_WORKSPACE/deps/sdk-rpcs3/bin/prospero-ar" t libpsbc.ps5.a | head
+          "$GITHUB_WORKSPACE/deps/sdk-rpcs3/bin/prospero-ar" t libpsbc.ps5.a > "$GITHUB_WORKSPACE/psbc-archive-members.txt"
+          sed -n '1,10p' "$GITHUB_WORKSPACE/psbc-archive-members.txt"
+          test -s "$GITHUB_WORKSPACE/psbc-archive-members.txt"
           echo 'PASS: PS5 libpsbc archive built' >> "$GITHUB_WORKSPACE/psbc-cross-build.log"
       - name: Upload logs (no binaries)
         if: always()
