@@ -40,14 +40,15 @@ jobs:
           df -h .
       - name: Attempt original bootstrap (opt-in)
         if: >-
-          ${{ inputs.run_bootstrap == true || github.event.head_commit.message == 'ci: run PS5 bootstrap with YAML fix' }}
+          ${{ inputs.run_bootstrap == true || github.event.head_commit.message == 'ci: launch PS5 bootstrap fixed' }}
         shell: bash
         run: |
           set -o pipefail
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           bash tools/bootstrap.sh 2>&1 | tee bootstrap.log
       - name: Upload build log (no binaries)
-        if: always() && inputs.run_bootstrap == true || github.event.head_commit.message == 'ci: launch first full PS5 bootstrap'
+        if: >-
+          ${{ always() && (inputs.run_bootstrap == true || github.event.head_commit.message == 'ci: launch PS5 bootstrap fixed') }}
         uses: actions/upload-artifact@v4
         with:
           name: ps5-bootstrap-log
