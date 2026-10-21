@@ -1,0 +1,19 @@
+name: PPU cache inspector tests
+on:
+  push:
+    branches:
+      - feature/ps5-13.42-rpcs3
+    paths:
+      - 'tools/inspect-ppu-cache.py'
+      - 'tools/test-inspect-ppu-cache.py'
+      - '.github/workflows/ppu-cache-tests.yml'
+  workflow_dispatch:
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python version
+        run: python3 --version
+      - name: Run cache inspector tests
+        run: python3 tools/test-inspect-ppu-cache.py -v
