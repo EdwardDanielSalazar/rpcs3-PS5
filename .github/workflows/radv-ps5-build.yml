@@ -49,6 +49,20 @@ jobs:
           archive=.deps/native/radv-release/lib/libvulkan_radeon.ps5.a
           test -s "$archive"
           sha256sum "$archive" | tee "$GITHUB_WORKSPACE/radv-archive.sha256"
+      - name: Build RADV smoke title to validate actual linking
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd deps/PS5_Vulkan
+          make libc > "$GITHUB_WORKSPACE/radv-libc.log" 2>&1
+          make app > "$GITHUB_WORKSPACE/radv-host-tool.log" 2>&1 || true
+          test -x build/host/ps5-native-tool
+          test -f runtime/libc.prx
+          export PS5_MESA_FORK="$GITHUB_WORKSPACE/deps/PS5_Mesa"
+          export RADV_ARCHIVE="$PWD/.deps/native/radv-release/lib/libvulkan_radeon.ps5.a"
+          bash tools/build-radv-title.sh 2>&1 | tee "$GITHUB_WORKSPACE/radv-smoke-link.log"
+          test -s dist/PPSA99014/eboot.bin
+          echo "RADV title link successful" >> "$GITHUB_WORKSPACE/radv-smoke-link.log"
       - name: Upload diagnostic logs only
         if: always()
         uses: actions/upload-artifact@v4
@@ -57,6 +71,9 @@ jobs:
           path: |
             radv-deps.log
             radv-build.log
+            radv-libc.log
+            radv-host-tool.log
+            radv-smoke-link.log
             radv-archive.sha256
             deps/PS5_Vulkan/*.log
           if-no-files-found: ignore
