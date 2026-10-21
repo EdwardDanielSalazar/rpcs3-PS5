@@ -25,8 +25,17 @@ if [[ ! -d $release ]]; then
     step "ps5-opengl SDK 0.3.0"
     archive="$deps/downloads/ps5-opengl-sdk-0.3.0.tar.gz"
     mkdir -p "$deps/downloads"
-    [[ -f $archive ]] || curl --fail --location --retry 3 -o "$archive" \
-        https://github.com/blackbearreloaded/ps5-opengl/releases/download/v0.3.0/ps5-opengl-sdk-0.3.0.tar.gz
+    # An alternate, user-verified mirror can be supplied without changing the
+    # pinned archive digest. Never silently substitute a different SDK version.
+    sdk_url=${PS5_OPENGL_SDK_URL:-https://github.com/blackbearreloaded/ps5-opengl/releases/download/v0.3.0/ps5-opengl-sdk-0.3.0.tar.gz}
+    if [[ ! -f $archive ]]; then
+        if ! curl --fail --location --retry 3 -o "$archive" "$sdk_url"; then
+            rm -f "$archive"
+            echo "ps5-opengl SDK 0.3.0 unavailable at: $sdk_url" >&2
+            echo "Set PS5_OPENGL_SDK_URL to a trusted mirror of the exact original archive (SHA-256 pinned in this script)." >&2
+            exit 1
+        fi
+    fi
     printf '%s  %s\n' a7bd6b85f00398eaf8d87ecc58fa0bde7cab79e065acc783268070d2f14b403c "$archive" |
         sha256sum --check --status || { echo "ps5-opengl archive digest mismatch" >&2; exit 1; }
     tar xzf "$archive" -C "$deps"
