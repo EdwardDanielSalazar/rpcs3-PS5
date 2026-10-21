@@ -1,0 +1,69 @@
+name: PSBC PS5 cross-compile probe
+on:
+  push:
+    branches: [feature/ps5-13.42-rpcs3]
+    paths: ['.github/workflows/psbc-ps5-cross-build.yml']
+  workflow_dispatch:
+jobs:
+  psbc-ps5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    container: archlinux:latest
+    steps:
+      - name: Install host packages
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git python python-pip python-mako python-ply python-yaml wget curl tar cmake ninja clang llvm lld
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Assemble SDK and PSBC source with fixed pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          mkdir -p deps
+          git init -q deps/PS5_PayloadSDK
+          git -C deps/PS5_PayloadSDK fetch --depth=1 https://github.com/lavavex/PS5_PayloadSDK.git b5efad528e0ac1b8289f39d72a0e890ff68ff0a6
+          git -C deps/PS5_PayloadSDK checkout --detach FETCH_HEAD
+          bash tools/install-sdk.sh
+          git clone --depth=1 https://github.com/darkxex/ps5-opengl.git sdk
+          python3 - <<'PY'
+          import json,subprocess,pathlib,hashlib
+          root=pathlib.Path('sdk')
+          d=json.loads((root/'dependencies.json').read_text())
+          p=root/d['psbc_patch']['path']
+          assert hashlib.sha256(p.read_bytes()).hexdigest()==d['psbc_patch']['sha256']
+          for name in ('opengnm-psbc','opengnm','SPIRV-Headers','Vulkan-Headers'):
+              pin=d['repositories'][name]
+              dst=root/'third_party'/name
+              dst.mkdir(parents=True,exist_ok=True)
+              subprocess.run(['git','init','-q',str(dst)],check=True)
+              subprocess.run(['git','-C',str(dst),'fetch','--depth=1',pin['url'],pin['revision']],check=True)
+              subprocess.run(['git','-C',str(dst),'checkout','--detach','FETCH_HEAD'],check=True)
+              if name=='opengnm-psbc':
+                  subprocess.run(['git','-C',str(dst),'apply','--index',str(p.resolve())],check=True)
+                  tree=subprocess.check_output(['git','-C',str(dst),'write-tree'],text=True).strip()
+                  assert tree==d['psbc_patch']['patched_tree'],(tree,d['psbc_patch']['patched_tree'])
+          print('PSBC patch and tree verified')
+          PY
+      - name: Generate sources and compile for PS5
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd sdk/third_party/opengnm-psbc
+          # Upstream generator script also compiles the host version; cap concurrency.
+          PSBC_JOBS=2 PS5_CCACHE=0 bash ../../toolchain/build-opengnm-psbc.sh > "$GITHUB_WORKSPACE/psbc-cross-build.log" 2>&1
+          PS5_PAYLOAD_SDK="$GITHUB_WORKSPACE/deps/sdk-rpcs3" \
+            make -f ../../toolchain/Makefile.opengnm-psbc-ps5 -j2 \
+            PS5_PAYLOAD_SDK="$GITHUB_WORKSPACE/deps/sdk-rpcs3" \
+            >> "$GITHUB_WORKSPACE/psbc-cross-build.log" 2>&1
+          test -s libpsbc.ps5.a
+          "$GITHUB_WORKSPACE/deps/sdk-rpcs3/bin/prospero-ar" t libpsbc.ps5.a | head
+          echo 'PASS: PS5 libpsbc archive built' >> "$GITHUB_WORKSPACE/psbc-cross-build.log"
+      - name: Upload logs (no binaries)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: psbc-ps5-cross-build-log
+          path: psbc-cross-build.log
+          if-no-files-found: ignore
