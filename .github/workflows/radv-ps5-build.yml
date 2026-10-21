@@ -22,7 +22,7 @@ jobs:
           set -euo pipefail
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           mkdir -p deps
-          for spec in             'PS5_Vulkan 5b5e4fc2d80fdb67a4f61ba9e6a8a424026bb8a5'             'PS5_Mesa b3588f78dd7fd46fbadc7ecd487e5f14d4213e4b'             'PS5_PayloadSDK b5efad528e0ac1b8289f39d72a0e890ff68ff0a6'; do
+          for spec in             'PS5_Vulkan 5b5e4fc2d80fdb67a4f61ba9e6a8a424026bb8a5'             'PS5_Mesa 7b59ef27c1b09b9671bc4153c41940c3155c3af2'             'PS5_PayloadSDK b83202be73e930050e00de0f1b4d9ec46c0391bf'; do
             read -r name rev <<< "$spec"
             git init -q "deps/$name"
             fetched=0
@@ -44,8 +44,8 @@ jobs:
           export PS5_PAYLOAD_SDK_FORK="$GITHUB_WORKSPACE/deps/PS5_PayloadSDK"
           export PS5_MESA_FORK="$GITHUB_WORKSPACE/deps/PS5_Mesa"
           cd deps/PS5_Vulkan
-          bash tools/setup-native-dependencies.sh > "$GITHUB_WORKSPACE/radv-deps.log" 2>&1
-          bash tools/build-radv.sh release > "$GITHUB_WORKSPACE/radv-build.log" 2>&1
+          bash tools/setup-native-dependencies.sh 2>&1 | tee "$GITHUB_WORKSPACE/radv-deps.log"
+          bash tools/build-radv.sh release 2>&1 | tee "$GITHUB_WORKSPACE/radv-build.log"
           archive=.deps/native/radv-release/lib/libvulkan_radeon.ps5.a
           test -s "$archive"
           sha256sum "$archive" | tee "$GITHUB_WORKSPACE/radv-archive.sha256"
