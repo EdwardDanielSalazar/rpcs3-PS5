@@ -1,0 +1,56 @@
+name: RPCS3 PS5 LLVM cross-build
+on:
+  push:
+    branches: [feature/ps5-13.42-rpcs3]
+    paths: ['.github/workflows/rpcs3-llvm-ps5.yml']
+  workflow_dispatch:
+jobs:
+  llvm-ps5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    container: archlinux:latest
+    steps:
+      - name: Install host tools
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git clang llvm lld cmake ninja python wget unzip curl tar
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Acquire pinned LLVM and payload SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          mkdir -p deps
+          for spec in \
+            'PS5_PayloadSDK b5efad528e0ac1b8289f39d72a0e890ff68ff0a6' \
+            'PS5_LLVM be5b58f51c93c67947b7e18cd45c2f9913f2c311'; do
+            read -r name rev <<< "$spec"
+            git init -q "deps/$name"
+            fetched=0
+            for owner in lavavex mihawk-99; do
+              if git -C "deps/$name" fetch --depth 1 "https://github.com/$owner/$name.git" "$rev"; then fetched=1; break; fi
+            done
+            test "$fetched" = 1
+            git -C "deps/$name" checkout --detach FETCH_HEAD
+          done
+          bash tools/install-sdk.sh
+          df -h .
+      - name: Build PS5 LLVM static libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          export CMAKE_BUILD_PARALLEL_LEVEL=2
+          export NINJAFLAGS=-j2
+          bash tools/build-llvm.sh 2>&1 | tee "$GITHUB_WORKSPACE/rpcs3-llvm-build.log"
+          test -f deps/llvm-ps5/.stamp
+          test -d deps/llvm-ps5/lib/cmake/llvm
+          echo "LLVM PS5 cross-build installed successfully"
+          df -h .
+      - name: Upload diagnostic log only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpcs3-llvm-ps5-log
+          path: rpcs3-llvm-build.log
+          if-no-files-found: ignore
