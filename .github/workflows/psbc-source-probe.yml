@@ -1,0 +1,49 @@
+name: PSBC source reconstruction probe
+on:
+  push:
+    branches: [feature/ps5-13.42-rpcs3]
+    paths:
+      - '.github/workflows/psbc-source-probe.yml'
+  workflow_dispatch:
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout our branch
+        uses: actions/checkout@v4
+      - name: Fetch candidate SDK source and check pinned compiler patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/psbc-probe
+          git clone --depth 1 https://github.com/darkxex/ps5-opengl.git /tmp/psbc-probe/sdk
+          python3 - <<'PY'
+          import json, hashlib
+          from pathlib import Path
+          root=Path('/tmp/psbc-probe/sdk')
+          d=json.loads((root/'dependencies.json').read_text())
+          patch=root/d['psbc_patch']['path']
+          actual=hashlib.sha256(patch.read_bytes()).hexdigest()
+          expected=d['psbc_patch']['sha256']
+          print('source repository: darkxex/ps5-opengl (v1.0.2 snapshot, NOT original 0.3.0)')
+          print('compiler revision:', d['repositories']['opengnm-psbc']['revision'])
+          print('patch sha256:', actual)
+          print('expected sha256:', expected)
+          assert actual == expected, 'patch digest mismatch'
+          for name in ['toolchain/opengnm-psbc-host.mak','tools/agc_shader_package_writer.py','src/platform/ps5_mesa_shims.c','src/platform/ps5_agc_package.c','src/platform/ps5_agc_package.h']:
+              assert (root/name).is_file(), 'missing '+name
+          print('required SDK source files: present')
+          PY
+          git clone --filter=blob:none https://github.com/PS4-OpenGNM/opengnm-psbc.git /tmp/psbc-probe/compiler
+          revision=$(python3 -c 'import json; print(json.load(open("/tmp/psbc-probe/sdk/dependencies.json"))["repositories"]["opengnm-psbc"]["revision"])')
+          git -C /tmp/psbc-probe/compiler checkout --detach "$revision"
+          git -C /tmp/psbc-probe/compiler apply --check /tmp/psbc-probe/sdk/toolchain/opengnm-psbc-ps5.patch
+          git -C /tmp/psbc-probe/compiler apply /tmp/psbc-probe/sdk/toolchain/opengnm-psbc-ps5.patch
+          git -C /tmp/psbc-probe/compiler add -A
+          tree=$(git -C /tmp/psbc-probe/compiler write-tree)
+          expected=$(python3 -c 'import json; print(json.load(open("/tmp/psbc-probe/sdk/dependencies.json"))["psbc_patch"]["patched_tree"])')
+          echo "assembled tree: $tree"
+          echo "expected tree:  $expected"
+          test "$tree" = "$expected"
+          echo 'PASS: candidate SDK PSBC source patch reconstructed exactly'
