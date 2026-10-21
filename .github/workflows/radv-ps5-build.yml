@@ -1,0 +1,62 @@
+name: RADV PS5 isolated build
+on:
+  push:
+    branches: [feature/ps5-13.42-rpcs3]
+    paths: ['.github/workflows/radv-ps5-build.yml']
+  workflow_dispatch:
+jobs:
+  radv:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    container: archlinux:latest
+    steps:
+      - name: Install host build tools
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git wget unzip curl python python-pip python-mako python-yaml python-ply meson ninja cmake clang llvm lld libclc spirv-llvm-translator glslang pkgconf rsync zlib
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Fetch pinned RADV sources and dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          mkdir -p deps
+          for spec in             'PS5_Vulkan 5b5e4fc2d80fdb67a4f61ba9e6a8a424026bb8a5'             'PS5_Mesa b3588f78dd7fd46fbadc7ecd487e5f14d4213e4b'             'PS5_PayloadSDK b5efad528e0ac1b8289f39d72a0e890ff68ff0a6'; do
+            read -r name rev <<< "$spec"
+            git init -q "deps/$name"
+            fetched=0
+            for owner in lavavex mihawk-99; do
+              if git -C "deps/$name" fetch --depth 1 "https://github.com/$owner/$name.git" "$rev"; then
+                fetched=1
+                break
+              fi
+            done
+            test "$fetched" = 1
+            git -C "deps/$name" checkout --detach FETCH_HEAD
+          done
+      - name: Compile isolated PS5 RADV release archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          export BUILD_JOBS=2
+          export NINJAFLAGS=-j2
+          export PS5_PAYLOAD_SDK_FORK="$GITHUB_WORKSPACE/deps/PS5_PayloadSDK"
+          export PS5_MESA_FORK="$GITHUB_WORKSPACE/deps/PS5_Mesa"
+          cd deps/PS5_Vulkan
+          bash tools/setup-native-dependencies.sh > "$GITHUB_WORKSPACE/radv-deps.log" 2>&1
+          bash tools/build-radv.sh release > "$GITHUB_WORKSPACE/radv-build.log" 2>&1
+          archive=.deps/native/radv-release/lib/libvulkan_radeon.ps5.a
+          test -s "$archive"
+          sha256sum "$archive" | tee "$GITHUB_WORKSPACE/radv-archive.sha256"
+      - name: Upload diagnostic logs only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: radv-ps5-build-logs
+          path: |
+            radv-deps.log
+            radv-build.log
+            radv-archive.sha256
+            deps/PS5_Vulkan/*.log
+          if-no-files-found: ignore
