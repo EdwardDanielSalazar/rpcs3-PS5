@@ -14,7 +14,7 @@ if [[ ! -f $build/build.ninja ]]; then
         -DUSE_NATIVE_INSTRUCTIONS=OFF -DUSE_LTO=OFF -DUSE_PRECOMPILED_HEADERS=OFF \
         -DWITH_LLVM=ON -DBUILD_LLVM=OFF -DSTATIC_LINK_LLVM=ON -DLLVM_DIR="$deps/llvm-ps5/lib/cmake/llvm" \
         -DUSE_FAUDIO=OFF -DUSE_SDL=OFF -DUSE_LIBEVDEV=OFF -DUSE_DISCORD_RPC=OFF -DUSE_GAMEMODE=OFF \
-        -DUSE_VULKAN=ON -DRPCS3_VULKAN_HEADERS_DIR="$deps/PS5_Vulkan/.deps/native/mesa/mesa-26.2.0/include" \
+        -DUSE_VULKAN=ON -DRPCS3_VULKAN_HEADERS_DIR="$deps/PS5_Mesa/include" \
         -DUSE_SYSTEM_FFMPEG=ON -DFFMPEG_INCLUDE_DIR="$deps/ffmpeg-ps5/include" \
         -DFFMPEG_LIBRARIES="$ff/libavformat.a;$ff/libavcodec.a;$ff/libswscale.a;$ff/libswresample.a;$ff/libavutil.a" \
         -DIconv_INCLUDE_DIR="$deps/libiconv-ps5/include" -DIconv_LIBRARY="$deps/libiconv-ps5/lib/libiconv.a" \
