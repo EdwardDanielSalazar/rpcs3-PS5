@@ -32,7 +32,7 @@ jobs:
             deps/ffmpeg-ps5
             deps/libiconv-ps5
             deps/PS5_Vulkan/.deps/native/radv-release
-          key: ps5-libs-v1-${{ runner.os }}-${{ hashFiles('tools/build-llvm.sh', 'tools/build-ffmpeg.sh', 'tools/build-libiconv.sh', 'tools/fetch-deps.sh', 'tools/install-sdk.sh', '.github/workflows/radv-ps5-build.yml') }}
+          key: ps5-libs-v1-${{ runner.os }}-${{ hashFiles('tools/build-llvm.sh', 'tools/build-ffmpeg.sh', 'tools/build-libiconv.sh', 'tools/fetch-deps.sh', 'tools/install-sdk.sh', '.github/workflows/radv-ps5-build.yml', '.github/workflows/rpcs3-integrated-ps5.yml') }}
           restore-keys: |
             ps5-libs-v1-${{ runner.os }}-
       - name: Build compatible RADV chain without missing OpenGL release
