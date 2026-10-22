@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Install pinned host build tools
         run: |
-          pacman -Syu --noconfirm --needed base-devel git ca-certificates clang llvm lld cmake ninja python python-pip python-mako python-ply python-yaml wget unzip curl tar nasm glslang spirv-llvm-translator libclc spirv-headers pkgconf rsync zlib
+          pacman -Syu --noconfirm --needed base-devel git ca-certificates clang llvm lld cmake meson ninja python python-pip python-mako python-ply python-yaml wget unzip curl tar nasm glslang spirv-llvm-translator libclc spirv-headers pkgconf rsync zlib
       - uses: actions/checkout@v4
         with:
           submodules: false
