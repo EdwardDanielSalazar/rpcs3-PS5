@@ -44,7 +44,6 @@ jobs:
           cd deps/PS5_Vulkan
           bash tools/setup-native-dependencies.sh 2>&1 | tee "$GITHUB_WORKSPACE/radv-deps.log"
           bash tools/build-radv.sh release 2>&1 | tee "$GITHUB_WORKSPACE/radv-build.log"
-          bash tools/fetch-mesa.sh 2>&1 | tee "$GITHUB_WORKSPACE/mesa-source.log"
           make libc > "$GITHUB_WORKSPACE/libc.log" 2>&1
           make app > "$GITHUB_WORKSPACE/native-tool.log" 2>&1 || true
           test -x build/host/ps5-native-tool
@@ -78,7 +77,6 @@ jobs:
             install-sdk.log
             radv-deps.log
             radv-build.log
-            mesa-source.log
             libc.log
             native-tool.log
             llvm.log
