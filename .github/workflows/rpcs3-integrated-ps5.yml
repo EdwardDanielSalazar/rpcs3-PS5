@@ -1,0 +1,89 @@
+name: RPCS3 PS5 integrated build attempt
+on:
+  push:
+    branches: [feature/ps5-13.42-rpcs3]
+    paths: ['.github/workflows/rpcs3-integrated-ps5.yml']
+  workflow_dispatch:
+jobs:
+  rpcs3-ps5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    container: archlinux:latest
+    steps:
+      - name: Install pinned host build tools
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git ca-certificates clang llvm lld cmake ninja python python-pip python-mako python-ply python-yaml wget unzip curl tar nasm glslang spirv-llvm-translator libclc spirv-headers pkgconf rsync zlib
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Fetch project-pinned source trees
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          bash tools/fetch-deps.sh 2>&1 | tee fetch-deps.log
+          bash tools/install-sdk.sh 2>&1 | tee install-sdk.log
+          df -h .
+      - name: Build compatible RADV chain without missing OpenGL release
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Driver's own PS5_Vulkan scripts require revisions distinct from RPCS3's
+          # original source pins. Use independent validated revisions, not a
+          # silent modification to tools/fetch-deps.sh.
+          for spec in \
+            'PS5_PayloadSDK b83202be73e930050e00de0f1b4d9ec46c0391bf' \
+            'PS5_Mesa 7b59ef27c1b09b9671bc4153c41940c3155c3af2'; do
+            read -r name rev <<< "$spec"
+            git -C "deps/$name" fetch --depth=1 "https://github.com/lavavex/$name.git" "$rev"
+            git -C "deps/$name" checkout --detach FETCH_HEAD
+          done
+          export PS5_PAYLOAD_SDK_FORK="$GITHUB_WORKSPACE/deps/PS5_PayloadSDK"
+          export PS5_MESA_FORK="$GITHUB_WORKSPACE/deps/PS5_Mesa"
+          export BUILD_JOBS=2 NINJAFLAGS=-j2
+          cd deps/PS5_Vulkan
+          bash tools/setup-native-dependencies.sh 2>&1 | tee "$GITHUB_WORKSPACE/radv-deps.log"
+          bash tools/build-radv.sh release 2>&1 | tee "$GITHUB_WORKSPACE/radv-build.log"
+          bash tools/fetch-mesa.sh 2>&1 | tee "$GITHUB_WORKSPACE/mesa-source.log"
+          make libc > "$GITHUB_WORKSPACE/libc.log" 2>&1
+          make app > "$GITHUB_WORKSPACE/native-tool.log" 2>&1 || true
+          test -x build/host/ps5-native-tool
+          test -s runtime/libc.prx
+          test -s .deps/native/radv-release/lib/libvulkan_radeon.ps5.a
+      - name: Build LLVM and RPCS3 libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          export CMAKE_BUILD_PARALLEL_LEVEL=2 NINJAFLAGS=-j2 JOBS=2
+          bash tools/build-llvm.sh 2>&1 | tee llvm.log
+          bash tools/build-zlib.sh 2>&1 | tee zlib.log
+          bash tools/build-libiconv.sh 2>&1 | tee libiconv.log
+          bash tools/build-ffmpeg.sh 2>&1 | tee ffmpeg.log
+          df -h .
+      - name: Configure and attempt RPCS3 PS5 executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NINJAFLAGS=-j2 CMAKE_BUILD_PARALLEL_LEVEL=2
+          bash tools/build-rpcs3.sh 2>&1 | tee rpcs3-build.log
+          test -s dist/PPSA99300/eboot.bin
+          echo 'RPCS3 PS5 eboot generated (hardware functionality not verified)'
+      - name: Publish diagnostic logs only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpcs3-integrated-ps5-logs
+          path: |
+            fetch-deps.log
+            install-sdk.log
+            radv-deps.log
+            radv-build.log
+            mesa-source.log
+            libc.log
+            native-tool.log
+            llvm.log
+            zlib.log
+            libiconv.log
+            ffmpeg.log
+            rpcs3-build.log
+          if-no-files-found: ignore
