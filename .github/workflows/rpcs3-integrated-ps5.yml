@@ -24,6 +24,17 @@ jobs:
           bash tools/fetch-deps.sh 2>&1 | tee fetch-deps.log
           bash tools/install-sdk.sh 2>&1 | tee install-sdk.log
           df -h .
+      - name: Restore compiled toolchain libraries
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps/llvm-ps5
+            deps/ffmpeg-ps5
+            deps/libiconv-ps5
+            deps/PS5_Vulkan/.deps/native/radv-release
+          key: ps5-libs-v1-${{ runner.os }}-${{ hashFiles('tools/build-llvm.sh', 'tools/build-ffmpeg.sh', 'tools/build-libiconv.sh', 'tools/fetch-deps.sh', 'tools/install-sdk.sh', '.github/workflows/radv-ps5-build.yml') }}
+          restore-keys: |
+            ps5-libs-v1-${{ runner.os }}-
       - name: Build compatible RADV chain without missing OpenGL release
         shell: bash
         run: |
@@ -67,6 +78,14 @@ jobs:
           bash tools/build-rpcs3.sh 2>&1 | tee rpcs3-build.log
           test -s dist/PPSA99300/eboot.bin
           echo 'RPCS3 PS5 eboot generated (hardware functionality not verified)'
+      - name: Publish PS5 test title for hardware validation
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpcs3-ps5-PPSA99300-${{ github.run_number }}
+          path: dist/PPSA99300/
+          if-no-files-found: error
+          retention-days: 7
       - name: Publish diagnostic logs only
         if: always()
         uses: actions/upload-artifact@v4
