@@ -35,8 +35,8 @@ if new in s:
     print("==> [rpcs3] RNG patch already applied")
 elif s.count(old) == 1:
     s = s.replace(old,new)
-    if '#include <cstdlib>' not in s:
-        s = '#include <cstdlib>\n' + s
+    if '#include <stdlib.h>' not in s:
+        s = '#include <stdlib.h>\n' + s
     p.write_text(s)
     print("==> [rpcs3] patched sys_ss RNG for PS5")
 else:
