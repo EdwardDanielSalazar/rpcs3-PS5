@@ -2,7 +2,7 @@ name: RPCS3 PS5 integrated build attempt
 on:
   push:
     branches: [feature/ps5-13.42-rpcs3]
-    paths: ['.github/workflows/rpcs3-integrated-ps5.yml', 'tools/patch-rpcs3-rng.sh', 'tools/build-rpcs3.sh']
+    paths: ['.github/workflows/rpcs3-integrated-ps5.yml', 'tools/patch-rpcs3-rng.sh', 'tools/patch-rpcs3-xmb-diagnostics.sh', 'tools/build-rpcs3.sh']
   workflow_dispatch:
 jobs:
   rpcs3-ps5:
