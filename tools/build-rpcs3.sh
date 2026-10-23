@@ -6,11 +6,13 @@ root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 deps="$root/deps"
 build="$root/build/rpcs3-ps5"
 ff="$deps/ffmpeg-ps5/lib"
+# Keep the upstream RPCS3 submodule pinned; apply our PS5-specific RNG fix locally.
+bash "$root/tools/patch-rpcs3-rng.sh"
 if [[ ! -f $build/build.ninja ]]; then
     echo "==> [rpcs3] configure"
     cmake -S "$root/src/rpcs3" -B "$build" -G Ninja \
         -DCMAKE_TOOLCHAIN_FILE="$root/cmake/ps5-rpcs3.cmake" -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_C_FLAGS="-march=znver2 -DZSTD_TRACE=0" -DCMAKE_CXX_FLAGS="-march=znver2 -DZSTD_TRACE=0" \
+        -DCMAKE_C_FLAGS="-march=znver2 -DZSTD_TRACE=0" -DCMAKE_CXX_FLAGS="-march=znver2 -DZSTD_TRACE=0 -DRPCS3_PS5_RNG" \
         -DUSE_NATIVE_INSTRUCTIONS=OFF -DUSE_LTO=OFF -DUSE_PRECOMPILED_HEADERS=OFF \
         -DWITH_LLVM=ON -DBUILD_LLVM=OFF -DSTATIC_LINK_LLVM=ON -DLLVM_DIR="$deps/llvm-ps5/lib/cmake/llvm" \
         -DUSE_FAUDIO=OFF -DUSE_SDL=OFF -DUSE_LIBEVDEV=OFF -DUSE_DISCORD_RPC=OFF -DUSE_GAMEMODE=OFF \
