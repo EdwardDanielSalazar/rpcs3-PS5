@@ -16,6 +16,7 @@ bash "$root/tools/patch-rpcs3-ps5-extended-settings.sh"
 bash "$root/tools/patch-rpcs3-ps5-settings-persistence.sh"
 bash "$root/tools/patch-rpcs3-ps5-save-settings.sh"
 bash "$root/tools/patch-rpcs3-ps5-ascension-diagnostics.sh"
+bash "$root/tools/patch-rpcs3-ps5-ascension-unified-diag.sh"
 bash "$root/tools/patch-rpcs3-ps5-affinity-fallback.sh"
 if [[ ! -f $build/build.ninja ]]; then
     echo "==> [rpcs3] configure"
