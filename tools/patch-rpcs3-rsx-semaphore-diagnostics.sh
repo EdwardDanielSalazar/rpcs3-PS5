@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Add targeted, read-only NV406E semaphore tracing to the pinned RPCS3 checkout.
+# Keep V4 semaphore observation and transition reads but downgrade its messages to TRACE for an A/B experiment.
 # Idempotent: safe for Ninja/CI rebuilds. Never changes acquire/release semantics.
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
@@ -16,7 +16,7 @@ if marker in s:
 original = """\t\tbind(NV406E_SEMAPHORE_ACQUIRE, nv406e::semaphore_acquire);
 \t\tbind(NV406E_SEMAPHORE_RELEASE, nv406e::semaphore_release);"""
 replacement = """\t\tbind(NV406E_SEMAPHORE_ACQUIRE, ps5_diag_semaphore_acquire);
-\t\tbind(NV406E_SEMAPHORE_RELEASE, ps5_diag_semaphore_release);\n\t\trsx_log.warning("PS5-RSX-SEMA-DIAG v4 installed: NV406E command hooks active");"""
+\t\tbind(NV406E_SEMAPHORE_RELEASE, ps5_diag_semaphore_release);\n\t\trsx_log.trace("PS5-RSX-SEMA-DIAG v4 installed: NV406E command hooks active");"""
 anchor = '\tvoid invalid_method(context* ctx, u32 reg, u32 arg)\n'
 wrapper = """\t// PS5-RSX-SEMA-DIAG v4: observe command inputs without modifying NV406E behavior.
 \tstatic void ps5_diag_semaphore_acquire(context* ctx, u32 reg, u32 arg)
@@ -32,16 +32,16 @@ wrapper = """\t// PS5-RSX-SEMA-DIAG v4: observe command inputs without modifying
 \t\t\tif (vm::check_addr(address, vm::page_readable))
 \t\t\t{
 \t\t\t\tconst u32 memory_value = vm::read32(address);
-\t\t\t\trsx_log.warning("PS5-RSX-SEMA-DIAG v4 WATCH acquire offset=0x%x addr=0x%x requested=0x%x guest_mem=0x%x", offset, address, arg, memory_value);
+\t\t\t\trsx_log.trace("PS5-RSX-SEMA-DIAG v4 WATCH acquire offset=0x%x addr=0x%x requested=0x%x guest_mem=0x%x", offset, address, arg, memory_value);
 \t\t\t}
 \t\t\telse
 \t\t\t{
-\t\t\t\trsx_log.warning("PS5-RSX-SEMA-DIAG v4 WATCH acquire offset=0x%x addr=0x%x requested=0x%x guest_mem=unmapped", offset, address, arg);
+\t\t\t\trsx_log.trace("PS5-RSX-SEMA-DIAG v4 WATCH acquire offset=0x%x addr=0x%x requested=0x%x guest_mem=unmapped", offset, address, arg);
 \t\t\t}
 \t\t}
 \t\tif (sample_count++ < 256 || (sample_count % 4096) == 0 || watched)
 \t\t{
-\t\t\trsx_log.warning("PS5-RSX-SEMA-DIAG v4 acquire offset=0x%x arg=0x%x label_base=0x%x candidate_addr=0x%x fifo_cmd=0x%x count=%u",
+\t\t\trsx_log.trace("PS5-RSX-SEMA-DIAG v4 acquire offset=0x%x arg=0x%x label_base=0x%x candidate_addr=0x%x fifo_cmd=0x%x count=%u",
 \t\t\t\toffset, arg, base, address, RSX(ctx)->get_fifo_cmd(), sample_count);
 \t\t}
 \t\tnv406e::semaphore_acquire(ctx, reg, arg);
@@ -59,16 +59,16 @@ wrapper = """\t// PS5-RSX-SEMA-DIAG v4: observe command inputs without modifying
 \t\t\tif (vm::check_addr(address, vm::page_readable))
 \t\t\t{
 \t\t\t\tconst u32 memory_value = vm::read32(address);
-\t\t\t\trsx_log.warning("PS5-RSX-SEMA-DIAG v4 WATCH release offset=0x%x addr=0x%x requested=0x%x guest_mem=0x%x", offset, address, arg, memory_value);
+\t\t\t\trsx_log.trace("PS5-RSX-SEMA-DIAG v4 WATCH release offset=0x%x addr=0x%x requested=0x%x guest_mem=0x%x", offset, address, arg, memory_value);
 \t\t\t}
 \t\t\telse
 \t\t\t{
-\t\t\t\trsx_log.warning("PS5-RSX-SEMA-DIAG v4 WATCH release offset=0x%x addr=0x%x requested=0x%x guest_mem=unmapped", offset, address, arg);
+\t\t\t\trsx_log.trace("PS5-RSX-SEMA-DIAG v4 WATCH release offset=0x%x addr=0x%x requested=0x%x guest_mem=unmapped", offset, address, arg);
 \t\t\t}
 \t\t}
 \t\tif (sample_count++ < 256 || (sample_count % 4096) == 0 || watched)
 \t\t{
-\t\t\trsx_log.warning("PS5-RSX-SEMA-DIAG v4 release offset=0x%x arg=0x%x label_base=0x%x candidate_addr=0x%x fifo_cmd=0x%x count=%u",
+\t\t\trsx_log.trace("PS5-RSX-SEMA-DIAG v4 release offset=0x%x arg=0x%x label_base=0x%x candidate_addr=0x%x fifo_cmd=0x%x count=%u",
 \t\t\t\toffset, arg, base, address, RSX(ctx)->get_fifo_cmd(), sample_count);
 \t\t}
 \t\tnv406e::semaphore_release(ctx, reg, arg);
@@ -91,7 +91,7 @@ if marker not in n:
 \t\t\tu32 ps5_diag_transitions = 0;
 \t\t\tif (ps5_diag_watch)
 \t\t\t{
-\t\t\t\trsx_log.warning("PS5-RSX-SEMA-DIAG v4 WAIT begin addr=0x%x expected=0x%x initial=0x%x", addr, arg, ps5_diag_previous);
+\t\t\t\trsx_log.trace("PS5-RSX-SEMA-DIAG v4 WAIT begin addr=0x%x expected=0x%x initial=0x%x", addr, arg, ps5_diag_previous);
 \t\t\t}
 \t\t\tu64 start = get_system_time();''', 1)
     loop_anchor = 'while (sema != arg)\n\t\t\t{'
@@ -105,7 +105,7 @@ if marker not in n:
 \t\t\t\t\tif (value != ps5_diag_previous)
 \t\t\t\t\t{
 \t\t\t\t\t\tif (ps5_diag_transitions++ < 64)
-\t\t\t\t\t\t\trsx_log.warning("PS5-RSX-SEMA-DIAG v4 WAIT transition addr=0x%x old=0x%x new=0x%x expected=0x%x", addr, ps5_diag_previous, value, arg);
+\t\t\t\t\t\t\trsx_log.trace("PS5-RSX-SEMA-DIAG v4 WAIT transition addr=0x%x old=0x%x new=0x%x expected=0x%x", addr, ps5_diag_previous, value, arg);
 \t\t\t\t\t\tps5_diag_previous = value;
 \t\t\t\t\t}
 \t\t\t\t}''', 1)
@@ -114,7 +114,7 @@ if marker not in n:
         raise SystemExit('[rsx-sema-diag] nv406e exit anchor not found')
     n = n.replace(exit_anchor, '''if (ps5_diag_watch)
 \t\t\t{
-\t\t\t\trsx_log.warning("PS5-RSX-SEMA-DIAG v4 WAIT end addr=0x%x expected=0x%x final=0x%x transitions=%u", addr, arg, static_cast<u32>(sema), ps5_diag_transitions);
+\t\t\t\trsx_log.trace("PS5-RSX-SEMA-DIAG v4 WAIT end addr=0x%x expected=0x%x final=0x%x transitions=%u", addr, arg, static_cast<u32>(sema), ps5_diag_transitions);
 \t\t\t}
 \t\t\tRSX(ctx)->fifo_wake_delay();
 \t\t\tRSX(ctx)->performance_counters.idle_time''', 1)
