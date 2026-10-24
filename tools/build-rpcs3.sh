@@ -9,6 +9,7 @@ ff="$deps/ffmpeg-ps5/lib"
 # Keep the upstream RPCS3 submodule pinned; apply our PS5-specific RNG fix locally.
 bash "$root/tools/patch-rpcs3-rng.sh"
 bash "$root/tools/patch-rpcs3-xmb-diagnostics.sh"
+bash "$root/tools/patch-rpcs3-rsx-semaphore-diagnostics.sh"
 if [[ ! -f $build/build.ninja ]]; then
     echo "==> [rpcs3] configure"
     cmake -S "$root/src/rpcs3" -B "$build" -G Ninja \
