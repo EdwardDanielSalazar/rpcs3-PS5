@@ -13,6 +13,7 @@ bash "$root/tools/patch-rpcs3-rsx-semaphore-diagnostics.sh"
 bash "$root/tools/patch-rpcs3-cellgame-diagnostics.sh"
 bash "$root/tools/patch-rpcs3-ps5-boot-settings.sh"
 bash "$root/tools/patch-rpcs3-ps5-extended-settings.sh"
+bash "$root/tools/patch-rpcs3-ps5-save-settings.sh"
 if [[ ! -f $build/build.ninja ]]; then
     echo "==> [rpcs3] configure"
     cmake -S "$root/src/rpcs3" -B "$build" -G Ninja \
