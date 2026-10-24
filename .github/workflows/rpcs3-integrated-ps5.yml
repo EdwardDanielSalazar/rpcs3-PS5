@@ -4,6 +4,9 @@ on:
     branches: [feature/ps5-13.42-rpcs3]
     paths: ['.github/workflows/rpcs3-integrated-ps5.yml', 'tools/patch-rpcs3-rng.sh', 'tools/patch-rpcs3-xmb-diagnostics.sh', 'tools/patch-rpcs3-rsx-semaphore-diagnostics.sh', 'tools/patch-rpcs3-cellgame-diagnostics.sh', 'tools/build-rpcs3.sh']
   workflow_dispatch:
+concurrency:
+  group: rpcs3-ps5-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   rpcs3-ps5:
     runs-on: ubuntu-latest
@@ -35,7 +38,26 @@ jobs:
           key: ps5-libs-v1-${{ runner.os }}-${{ hashFiles('tools/build-llvm.sh', 'tools/build-ffmpeg.sh', 'tools/build-libiconv.sh', 'tools/fetch-deps.sh', 'tools/install-sdk.sh', '.github/workflows/radv-ps5-build.yml') }}
           restore-keys: |
             ps5-libs-v1-${{ runner.os }}-
+      # RADV's full native build is expensive. Save the host tool, PS5 libc,
+      # and the compiled driver together; otherwise each RPCS3 edit rebuilds them.
+      # Cache only exact revision/script fingerprints; never reuse an arbitrary older driver.
+      - name: Restore validated RADV native build
+        id: native_cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps/PS5_Vulkan/.deps/native
+            deps/PS5_Vulkan/runtime/libc.prx
+            deps/PS5_Vulkan/build/host/ps5-native-tool
+          key: ps5-radv-native-v1-${{ runner.os }}-${{ hashFiles('tools/fetch-deps.sh', 'tools/install-sdk.sh', 'tools/build-rpcs3.sh', 'cmake/ps5-rpcs3.cmake') }}-sdk-b83202be-mesa-7b59ef27
+      - name: Confirm restored native artifacts
+        if: steps.native_cache.outputs.cache-hit == 'true'
+        run: |
+          test -x deps/PS5_Vulkan/build/host/ps5-native-tool
+          test -s deps/PS5_Vulkan/runtime/libc.prx
+          test -s deps/PS5_Vulkan/.deps/native/radv-release/lib/libvulkan_radeon.ps5.a
       - name: Build compatible RADV chain without missing OpenGL release
+        if: steps.native_cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           set -euo pipefail
