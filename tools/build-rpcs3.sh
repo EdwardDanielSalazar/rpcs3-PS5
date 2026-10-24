@@ -10,6 +10,7 @@ ff="$deps/ffmpeg-ps5/lib"
 bash "$root/tools/patch-rpcs3-rng.sh"
 bash "$root/tools/patch-rpcs3-xmb-diagnostics.sh"
 bash "$root/tools/patch-rpcs3-rsx-semaphore-diagnostics.sh"
+bash "$root/tools/patch-rpcs3-cellgame-diagnostics.sh"
 if [[ ! -f $build/build.ninja ]]; then
     echo "==> [rpcs3] configure"
     cmake -S "$root/src/rpcs3" -B "$build" -G Ninja \
