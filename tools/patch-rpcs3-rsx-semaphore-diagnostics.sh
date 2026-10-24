@@ -16,7 +16,7 @@ if marker in s:
 original = """\t\tbind(NV406E_SEMAPHORE_ACQUIRE, nv406e::semaphore_acquire);
 \t\tbind(NV406E_SEMAPHORE_RELEASE, nv406e::semaphore_release);"""
 replacement = """\t\tbind(NV406E_SEMAPHORE_ACQUIRE, ps5_diag_semaphore_acquire);
-\t\tbind(NV406E_SEMAPHORE_RELEASE, ps5_diag_semaphore_release);"""
+\t\tbind(NV406E_SEMAPHORE_RELEASE, ps5_diag_semaphore_release);\n\t\trsx_log.warning("PS5-RSX-SEMA-DIAG v2 installed: NV406E command hooks active");"""
 anchor = '\tvoid invalid_method(context* ctx, u32 reg, u32 arg)\n'
 wrapper = """\t// PS5-RSX-SEMA-DIAG v2: observe command inputs without modifying NV406E behavior.
 \tstatic void ps5_diag_semaphore_acquire(context* ctx, u32 reg, u32 arg)
