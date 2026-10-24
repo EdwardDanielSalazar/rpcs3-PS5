@@ -2,7 +2,7 @@ name: RPCS3 PS5 integrated build attempt
 on:
   push:
     branches: [feature/ps5-13.42-rpcs3]
-    paths: ['.github/workflows/rpcs3-integrated-ps5.yml', 'tools/patch-rpcs3-rng.sh', 'tools/patch-rpcs3-xmb-diagnostics.sh', 'tools/patch-rpcs3-rsx-semaphore-diagnostics.sh', 'tools/patch-rpcs3-cellgame-diagnostics.sh', 'tools/build-rpcs3.sh']
+    paths: ['.github/workflows/rpcs3-integrated-ps5.yml', 'tools/patch-rpcs3-rng.sh', 'tools/patch-rpcs3-xmb-diagnostics.sh', 'tools/patch-rpcs3-rsx-semaphore-diagnostics.sh', 'tools/patch-rpcs3-cellgame-diagnostics.sh', 'tools/patch-rpcs3-ps5-boot-settings.sh', 'tools/build-rpcs3.sh']
   workflow_dispatch:
 concurrency:
   group: rpcs3-ps5-${{ github.ref }}
@@ -49,7 +49,7 @@ jobs:
             deps/PS5_Vulkan/.deps/native
             deps/PS5_Vulkan/runtime/libc.prx
             deps/PS5_Vulkan/build/host/ps5-native-tool
-          key: ps5-radv-native-v1-${{ runner.os }}-${{ hashFiles('tools/fetch-deps.sh', 'tools/install-sdk.sh', 'tools/build-rpcs3.sh', 'cmake/ps5-rpcs3.cmake') }}-sdk-b83202be-mesa-7b59ef27
+          key: ps5-radv-native-v1-${{ runner.os }}-${{ hashFiles('tools/fetch-deps.sh', 'tools/install-sdk.sh', 'tools/build-driver-chain.sh', 'cmake/ps5-rpcs3.cmake') }}-sdk-b83202be-mesa-7b59ef27
       - name: Confirm restored native artifacts
         if: steps.native_cache.outputs.cache-hit == 'true'
         run: |
