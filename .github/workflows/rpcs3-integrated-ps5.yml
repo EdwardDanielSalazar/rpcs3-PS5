@@ -80,13 +80,11 @@ jobs:
           zlib_archive=".deps/native/zlib/zlib-1.3.2.tar.gz"
           zlib_sha="bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16"
           mkdir -p "$(dirname "$zlib_archive")"
-          if ! printf '%s  %s\\n' "$zlib_sha" "$zlib_archive" | sha256sum -c --status; then
+          if ! printf '%s  %s\n' "$zlib_sha" "$zlib_archive" | sha256sum -c --status; then
             rm -f "$zlib_archive"
-            curl --fail --location --retry 3 \\
-              "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz" \\
-              -o "$zlib_archive"
+            curl --fail --location --retry 3 --output "$zlib_archive" "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz"
           fi
-          printf '%s  %s\\n' "$zlib_sha" "$zlib_archive" | sha256sum -c
+          printf '%s  %s\n' "$zlib_sha" "$zlib_archive" | sha256sum -c
           bash tools/setup-native-dependencies.sh 2>&1 | tee "$GITHUB_WORKSPACE/radv-deps.log"
           bash tools/build-radv.sh release 2>&1 | tee "$GITHUB_WORKSPACE/radv-build.log"
           make libc > "$GITHUB_WORKSPACE/libc.log" 2>&1
