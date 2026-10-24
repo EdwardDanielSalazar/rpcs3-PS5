@@ -1,7 +1,7 @@
 name: RPCS3 PS5 integrated build attempt
 on:
   push:
-    branches: [feature/ps5-13.42-rpcs3]
+    branches: [feature/ps5-13.42-rpcs3, experiment/rsx-v4-quiet-from-28]
     paths: ['.github/workflows/rpcs3-integrated-ps5.yml', 'tools/patch-rpcs3-rng.sh', 'tools/patch-rpcs3-xmb-diagnostics.sh', 'tools/patch-rpcs3-rsx-semaphore-diagnostics.sh', 'tools/patch-rpcs3-cellgame-diagnostics.sh', 'tools/patch-rpcs3-ps5-boot-settings.sh', 'tools/patch-rpcs3-ps5-extended-settings.sh', 'tools/patch-rpcs3-ps5-save-settings.sh', 'tools/patch-rpcs3-ps5-settings-persistence.sh', 'tools/patch-rpcs3-ps5-ascension-diagnostics.sh', 'tools/build-rpcs3.sh']
   workflow_dispatch:
 concurrency:
