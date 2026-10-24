@@ -41,7 +41,9 @@ if marker not in s:
     replacement='''			// PS5_ASCENSION_UNIFIED_DIAG_V1: final merged game config, after fixup.
 			if (m_title_id == "BCES01741")
 			{
-				sys_log.notice("PS5-ASCENSION BOOT stage=game cycle=%u mode=%s custom=%s", ps5_init_cycle, m_config_mode, g_cfg.name);
+				static u32 ps5_ascension_game_boot = 0;
+				++ps5_ascension_game_boot;
+				sys_log.notice("PS5-ASCENSION BOOT stage=game attempt=%u mode=%s custom=%s", ps5_ascension_game_boot, m_config_mode, g_cfg.name);
 			}
 			// Backup config
 			g_backup_cfg.from_string(g_cfg.to_string());'''
