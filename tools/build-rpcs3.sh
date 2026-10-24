@@ -15,6 +15,7 @@ bash "$root/tools/patch-rpcs3-ps5-boot-settings.sh"
 bash "$root/tools/patch-rpcs3-ps5-extended-settings.sh"
 bash "$root/tools/patch-rpcs3-ps5-settings-persistence.sh"
 bash "$root/tools/patch-rpcs3-ps5-save-settings.sh"
+bash "$root/tools/patch-rpcs3-ps5-ascension-diagnostics.sh"
 if [[ ! -f $build/build.ninja ]]; then
     echo "==> [rpcs3] configure"
     cmake -S "$root/src/rpcs3" -B "$build" -G Ninja \
