@@ -134,4 +134,25 @@ if 'PS5_ASCENSION_TARGETED_RETURN_TRACE_V1' not in s:
     p.write_text(s)
     print('Installed targeted PPU LLVM return trace calls')
 else: print('LLVM return trace already installed')
+
+p=root/'rpcs3/Emu/Cell/PPUTranslator.cpp'
+s=p.read_text()
+if 'PS5_ASCENSION_TRANSLATE_COVERAGE_V1' not in s:
+    anchor='''Function* PPUTranslator::Translate(const ppu_function& info)
+{
+	// Instruction address is (m_addr + base)'''
+    replacement='''Function* PPUTranslator::Translate(const ppu_function& info)
+{
+	// PS5_ASCENSION_TRANSLATE_COVERAGE_V1: prove that LLVM actually translated
+	// the guest range in which the four return probes were inserted.
+	if (info.addr <= 0x001f6b54 && u64{info.addr} + info.size > 0x001f6b54)
+	{
+		ppu_log.notice("PS5-ASCENSION LLVM-COVERAGE block=0x%08x size=0x%x target=0x001f6b54", info.addr, info.size);
+	}
+	// Instruction address is (m_addr + base)'''
+    if s.count(anchor)!=1: raise SystemExit('Translator coverage anchor mismatch')
+    s=s.replace(anchor,replacement,1)
+    p.write_text(s)
+    print('Installed Ascension LLVM translation coverage marker')
+else: print('LLVM coverage marker already installed')
 PY
