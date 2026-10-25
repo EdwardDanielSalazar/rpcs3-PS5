@@ -155,4 +155,30 @@ if 'PS5_ASCENSION_TRANSLATE_COVERAGE_V1' not in s:
     p.write_text(s)
     print('Installed Ascension LLVM translation coverage marker')
 else: print('LLVM coverage marker already installed')
+
+p=root/'rpcs3/Emu/Cell/PPUThread.cpp'
+s=p.read_text()
+if 'PS5_ASCENSION_PPU_CACHE_SOURCE_V1' not in s:
+    anchor='''		// Check object file
+		if (jit_compiler::check(cache_path + obj_name))
+		{'''
+    replacement='''		// PS5_ASCENSION_PPU_CACHE_SOURCE_V1: inspect LLVM object selection
+		// without invalidating any cached object. Limit output to avoid flooding.
+		if (info.path.find("Ascension") != std::string::npos || info.path.find("EBOOT.BIN") != std::string::npos)
+		{
+			static atomic_t<u32> ps5_cache_sample{0};
+			const u32 sample = ++ps5_cache_sample;
+			if (sample <= 12)
+			{
+				ppu_log.notice("PS5-ASCENSION PPU-CACHE sample=%u path=%s object=%s exists=%d", sample, info.path, obj_name, jit_compiler::check(cache_path + obj_name) ? 1 : 0);
+			}
+		}
+		// Check object file
+		if (jit_compiler::check(cache_path + obj_name))
+		{'''
+    if s.count(anchor)!=1: raise SystemExit('Cache selection anchor mismatch')
+    s=s.replace(anchor,replacement,1)
+    p.write_text(s)
+    print('Installed PPU cache object selection diagnostic')
+else: print('Cache diagnostic already present')
 PY
