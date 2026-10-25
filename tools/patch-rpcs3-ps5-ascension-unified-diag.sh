@@ -86,16 +86,21 @@ if 'PS5_ASCENSION_RETURN_TRACE_V1' not in s:
 }'''
     replacement=anchor+'''
 
-// PS5_ASCENSION_RETURN_TRACE_V1: called only from four targeted guest PCs.
+// PS5_ASCENSION_RETURN_TRACE_V2: captures r30 across bctrl.
 // Pure observer: no register or guest memory modifications.
 static void ps5_ascension_return_trace(u64 pc, u64 r3, u64 r28, u64 r30)
 {
 	static atomic_t<u32> total{0};
 	static atomic_t<u32> zero_count{0};
+	static atomic_t<u32> around_call_count{0};
+	static atomic_t<u32> around_call_null_count{0};
 	const u32 seq = ++total;
 	const bool zero = r3 == 0;
 	const u32 zseq = zero ? ++zero_count : 0;
-	if (seq <= 24 || (zero && zseq <= 48))
+	const bool around_call = pc == 0x001f6b50 || pc == 0x001f6b54;
+	const u32 call_seq = around_call ? ++around_call_count : 0;
+	const u32 call_null_seq = around_call && r30 == 0 ? ++around_call_null_count : 0;
+	if (seq <= 24 || (zero && zseq <= 48) || (around_call && (call_seq <= 32 || (r30 == 0 && call_null_seq <= 64))))
 	{
 		ppu_log.notice("PS5-ASCENSION RETURN pc=0x%08llx r3=0x%llx r28=0x%llx r30=0x%llx seq=%u null_seq=%u", pc, r3, r28, r30, seq, zseq);
 	}
@@ -119,10 +124,11 @@ if 'PS5_ASCENSION_TARGETED_RETURN_TRACE_V1' not in s:
     replacement='''			const u32 op = *ensure(m_info.get_ptr<u32>(::narrow<u32>(m_addr + base)));
 
 			// PS5_ASCENSION_TARGETED_RETURN_TRACE_V1:
-			// Capture values before calls and just after their returns.
+			// Capture returns and r30 on both sides of indirect bctrl.
 			// The two return PCs record r3 before the guest copies it to r30.
 			if (m_addr + base == 0x001f6b04 || m_addr + base == 0x001f6b0c ||
-				m_addr + base == 0x001f6b2c || m_addr + base == 0x001f6b30)
+				m_addr + base == 0x001f6b2c || m_addr + base == 0x001f6b30 ||
+				m_addr + base == 0x001f6b50 || m_addr + base == 0x001f6b54)
 			{
 				Call(GetType<void>(), "__ps5_ascension_return_trace",
 					GetAddr(), GetGpr(3), GetGpr(28), GetGpr(30));
