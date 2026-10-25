@@ -76,4 +76,62 @@ if mark not in s:
     print('Installed targeted PPU null crash dump marker')
 else:
     print('PPU null dump diagnostics already installed')
+
+p=root/'rpcs3/Emu/Cell/PPUThread.cpp'
+s=p.read_text()
+if 'PS5_ASCENSION_RETURN_TRACE_V1' not in s:
+    anchor='''static void ppu_trace(u64 addr)
+{
+	ppu_log.notice("Trace: 0x%llx", addr);
+}'''
+    replacement=anchor+'''
+
+// PS5_ASCENSION_RETURN_TRACE_V1: called only from four targeted guest PCs.
+// Pure observer: no register or guest memory modifications.
+static void ps5_ascension_return_trace(u64 pc, u64 r3, u64 r28, u64 r30)
+{
+	static atomic_t<u32> total{0};
+	static atomic_t<u32> zero_count{0};
+	const u32 seq = ++total;
+	const bool zero = r3 == 0;
+	const u32 zseq = zero ? ++zero_count : 0;
+	if (seq <= 24 || (zero && zseq <= 48))
+	{
+		ppu_log.notice("PS5-ASCENSION RETURN pc=0x%08llx r3=0x%llx r28=0x%llx r30=0x%llx seq=%u null_seq=%u", pc, r3, r28, r30, seq, zseq);
+	}
+}'''
+    if s.count(anchor)!=1: raise SystemExit('PPU helper anchor mismatch')
+    s=s.replace(anchor,replacement,1)
+    anchor='''{ "__trace", reinterpret_cast<u64>(&ppu_trace) },'''
+    replacement=anchor+'''
+			{ "__ps5_ascension_return_trace", reinterpret_cast<u64>(&ps5_ascension_return_trace) },'''
+    if s.count(anchor)!=1: raise SystemExit('PPU symbol anchor mismatch')
+    s=s.replace(anchor,replacement,1)
+    p.write_text(s)
+    print('Installed native PPU return tracing helper')
+else: print('Native trace helper already installed')
+p=root/'rpcs3/Emu/Cell/PPUTranslator.cpp'
+s=p.read_text()
+if 'PS5_ASCENSION_TARGETED_RETURN_TRACE_V1' not in s:
+    anchor='''			const u32 op = *ensure(m_info.get_ptr<u32>(::narrow<u32>(m_addr + base)));
+
+			(this->*(s_ppu_decoder.decode(op)))({op});'''
+    replacement='''			const u32 op = *ensure(m_info.get_ptr<u32>(::narrow<u32>(m_addr + base)));
+
+			// PS5_ASCENSION_TARGETED_RETURN_TRACE_V1:
+			// Capture values before calls and just after their returns.
+			// The two return PCs record r3 before the guest copies it to r30.
+			if (m_addr + base == 0x001f6b04 || m_addr + base == 0x001f6b0c ||
+				m_addr + base == 0x001f6b2c || m_addr + base == 0x001f6b30)
+			{
+				Call(GetType<void>(), "__ps5_ascension_return_trace",
+					GetAddr(), GetGpr(3), GetGpr(28), GetGpr(30));
+			}
+
+			(this->*(s_ppu_decoder.decode(op)))({op});'''
+    if s.count(anchor)!=1: raise SystemExit('Translator loop anchor mismatch')
+    s=s.replace(anchor,replacement,1)
+    p.write_text(s)
+    print('Installed targeted PPU LLVM return trace calls')
+else: print('LLVM return trace already installed')
 PY
